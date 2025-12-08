@@ -1,0 +1,29 @@
+/**
+ * @fileoverview API Routes Registration
+ * 
+ * Central route registration point.
+ * All route modules should be imported and registered here.
+ */
+
+import type { FastifyInstance } from 'fastify';
+
+/**
+ * Registers all API routes with the Fastify instance.
+ * 
+ * @param app - Fastify instance
+ */
+export async function registerRoutes(app: FastifyInstance): Promise<void> {
+  // Register route modules here
+  // Example:
+  // await app.register(playerRoutes, { prefix: '/api/player' });
+  // await app.register(fishRoutes, { prefix: '/api/fish' });
+
+  // Placeholder route for testing
+  app.get('/api', async () => {
+    return {
+      message: 'Aqua Stark Backend API',
+      version: '1.0.0',
+    };
+  });
+}
+
