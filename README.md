@@ -118,7 +118,3 @@ npm run build
 2. Follow [Standards](./docs/standards.md) for coding conventions
 3. Use strict TypeScript types
 4. All endpoints must follow the standard response format
-
-## 📄 License
-
-MIT
