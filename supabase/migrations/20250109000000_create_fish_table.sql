@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS fish (
+  id INTEGER PRIMARY KEY,
+  owner TEXT NOT NULL,
+  species TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  CONSTRAINT fk_fish_owner FOREIGN KEY (owner) REFERENCES players(address)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_fish_owner ON fish(owner);
