@@ -90,3 +90,4 @@ Then run `npx supabase link` again to re-link.
 - After linking, migrations will automatically apply with `npx supabase db push`
 - Never commit your `.env` file with real credentials
 - Each migration should be in its own file and will auto-apply via `supabase db push`
+
