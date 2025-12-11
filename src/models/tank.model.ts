@@ -13,6 +13,14 @@ export interface TankOnChain {
   capacity: number;
 }
 
+// Off-chain fields (from Supabase)
+export interface TankOffChain {
+  id: number;
+  owner: string;
+  createdAt: Date;
+  name?: string;
+}
+
 export interface Tank {
   id: number;
   owner: string;
