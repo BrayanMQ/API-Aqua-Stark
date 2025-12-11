@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS tanks (
+  id INTEGER PRIMARY KEY,
+  owner TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  name TEXT,
+  CONSTRAINT fk_tanks_owner FOREIGN KEY (owner) REFERENCES players(address)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_tanks_owner ON tanks(owner);
+
