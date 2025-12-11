@@ -21,17 +21,17 @@ export interface TankOffChain {
   name?: string;
 }
 
-export interface Tank {
+export interface Tank extends TankOnChain, Omit<TankOffChain, 'id' | 'owner'> {
   id: number;
-  owner: string;
-  capacity: number;
 }
 
 export interface CreateTankDto {
   owner: string;
   capacity?: number;
+  name?: string;
 }
 
 export interface UpdateTankDto {
   capacity?: number;
+  name?: string;
 }
