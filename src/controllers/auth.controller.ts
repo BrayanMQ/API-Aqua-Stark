@@ -12,6 +12,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { ControllerResponse } from '@/core/types/controller-response';
 import { createSuccessResponse, createErrorResponse } from '@/core/responses';
+import { ValidationError } from '@/core/errors';
 import { PlayerService } from '@/services/player.service';
 import type { Player } from '@/models/player.model';
 
@@ -43,7 +44,7 @@ export async function login(
 
     // Validate that address is provided
     if (!address) {
-      return createErrorResponse(new Error('Address is required in request body'));
+      return createErrorResponse(new ValidationError('Address is required in request body'));
     }
 
     // Register or retrieve player
