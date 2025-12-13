@@ -46,3 +46,21 @@ export interface FishFamilyTree {
   ancestors: FishFamilyMember[];
   generation_count: number;
 }
+
+/**
+ * Result of minting a tank on-chain.
+ * Contains the transaction hash and the generated tank ID.
+ */
+export interface MintTankResult {
+  tx_hash: string;
+  tank_id: number;
+}
+
+/**
+ * Result of minting a fish on-chain.
+ * Contains the transaction hash and the generated fish ID.
+ */
+export interface MintFishResult {
+  tx_hash: string;
+  fish_id: number;
+}
