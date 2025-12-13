@@ -5,10 +5,10 @@
  * retrieval, and synchronization between Supabase and on-chain data.
  */
 
-import { ValidationError, OnChainError } from '../core/errors';
-import { getSupabaseClient } from '../core/utils/supabase-client';
-import { registerPlayer as registerPlayerOnChain } from '../core/utils/dojo-client';
-import type { Player, CreatePlayerDto } from '../models/player.model';
+import { ValidationError, OnChainError } from '@/core/errors';
+import { getSupabaseClient } from '@/core/utils/supabase-client';
+import { registerPlayer as registerPlayerOnChain } from '@/core/utils/dojo-client';
+import type { Player, CreatePlayerDto } from '@/models/player.model';
 
 /**
  * Service for managing player data and operations.

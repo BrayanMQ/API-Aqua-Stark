@@ -10,10 +10,10 @@
  */
 
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { ControllerResponse } from '../core/types/controller-response';
-import { createSuccessResponse, createErrorResponse } from '../core/responses';
-import { PlayerService } from '../services/player.service';
-import type { Player } from '../models/player.model';
+import type { ControllerResponse } from '@/core/types/controller-response';
+import { createSuccessResponse, createErrorResponse } from '@/core/responses';
+import { PlayerService } from '@/services/player.service';
+import type { Player } from '@/models/player.model';
 
 const playerService = new PlayerService();
 
@@ -36,7 +36,7 @@ interface LoginDto {
  */
 export async function login(
   request: FastifyRequest<{ Body: LoginDto }>,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<ControllerResponse<Player>> {
   try {
     const { address } = request.body;
