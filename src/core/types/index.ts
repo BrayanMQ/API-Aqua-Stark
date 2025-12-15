@@ -22,6 +22,8 @@ export type {
   TankOnChain,
   FishOnChain,
   DecorationOnChain,
+  MintTankResult,
+  MintFishResult,
 } from './dojo-types';
 
 export { DecorationKind } from './dojo-types';
