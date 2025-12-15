@@ -19,6 +19,7 @@ import {
   MintTankResult,
   MintFishResult,
   FishOnChain,
+  TankOnChain,
 } from '../types';
 
 // Flag to track if client is initialized
@@ -449,6 +450,31 @@ export async function mintTank(
     tx_hash: txHash,
     tank_id: tankId,
   };
+}
+
+/**
+ * Gets tank data from on-chain.
+ * STUB: Returns mock tank data.
+ * 
+ * @param tankId - ID of the tank
+ * @returns TankOnChain data
+ */
+export async function getTankOnChain(tankId: number): Promise<TankOnChain> {
+  logDebug(`[STUB] getTankOnChain called with tankId: ${tankId}`);
+  
+  // TODO: Replace with real Dojo contract call
+  // const result = await contract.call('get_tank', [tankId]);
+  
+  // Mock data - owner will be overridden by the service with the real owner from DB if needed,
+  // or we assume the caller knows it. For now returning a placeholder.
+  const tankOnChain: TankOnChain = {
+    id: tankId,
+    owner: '0x0', // Placeholder, service should handle consistency
+    capacity: 10, // Default capacity
+  };
+
+  logInfo(`Tank on-chain data retrieved (stub): tank=${tankId}`);
+  return tankOnChain;
 }
 
 /**
