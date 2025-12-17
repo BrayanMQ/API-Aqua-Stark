@@ -1,8 +1,15 @@
+export enum FishState {
+  Baby = 'Baby',
+  Juvenile = 'Juvenile',
+  YoungAdult = 'YoungAdult',
+  Adult = 'Adult',
+}
+
 // On-chain fields (from Dojo/Starknet)
 export interface FishOnChain {
   id: number;
   xp: number;
-  state: string;
+  state: FishState | string;
   hunger: number;
   isReadyToBreed: boolean;
   dna: string;
