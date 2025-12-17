@@ -46,3 +46,28 @@ export async function getDecorationById(
   }
 }
 
+/**
+ * GET /player/:address/decorations
+ * 
+ * Retrieves all decorations owned by a specific player.
+ * 
+ * @param request - Fastify request with address parameter
+ * @param reply - Fastify reply
+ * @returns Array of Decoration data or error response
+ */
+export async function getDecorationsByOwner(
+  request: FastifyRequest<{ Params: { address: string } }>,
+  _reply: FastifyReply
+): Promise<ControllerResponse<Decoration[]>> {
+  try {
+    const { address } = request.params;
+    const decorationList = await decorationService.getDecorationsByOwner(address);
+
+    return createSuccessResponse(
+      decorationList,
+      'Decorations retrieved successfully'
+    );
+  } catch (error) {
+    return createErrorResponse(error);
+  }
+}

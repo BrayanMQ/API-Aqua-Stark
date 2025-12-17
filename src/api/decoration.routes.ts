@@ -5,7 +5,7 @@
  */
 
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { getDecorationById } from '@/controllers/decoration.controller';
+import { getDecorationById, getDecorationsByOwner } from '@/controllers/decoration.controller';
 
 /**
  * Registers decoration routes with the Fastify instance.
@@ -19,5 +19,7 @@ export async function decorationRoutes(
 ): Promise<void> {
   // GET /decoration/:id - Get decoration details by ID
   app.get('/decoration/:id', getDecorationById);
-}
 
+  // GET /player/:address/decorations - Get all decorations owned by a player
+  app.get('/player/:address/decorations', getDecorationsByOwner);
+}
