@@ -8,7 +8,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { ControllerResponse } from '@/core/types/controller-response';
 import { createSuccessResponse, createErrorResponse } from '@/core/responses';
 import { FishService } from '@/services/fish.service';
-import type { Fish } from '@/models/fish.model';
+import type { Fish, FeedFishBatchDto } from '@/models/fish.model';
 
 const fishService = new FishService();
 
@@ -65,6 +65,44 @@ export async function getFishByOwner(
     return createSuccessResponse(
       fishList,
       'Fish retrieved successfully'
+    );
+  } catch (error) {
+    return createErrorResponse(error);
+  }
+}
+
+/**
+ * POST /fish/feed
+ * 
+ * Feeds multiple fish in a batch operation.
+ * Validates ownership and calls the on-chain feed_fish_batch function.
+ * All state updates (XP, last_fed_at, multipliers) happen on-chain.
+ * 
+ * @param request - Fastify request with FeedFishBatchDto in body
+ * @param reply - Fastify reply
+ * @returns Transaction hash or error response
+ */
+export async function feedFish(
+  request: FastifyRequest<{ Body: FeedFishBatchDto }>,
+  _reply: FastifyReply
+): Promise<ControllerResponse<{ tx_hash: string }>> {
+  try {
+    const { fish_ids, owner } = request.body;
+
+    // Basic validation before service call (service does stricter validation)
+    if (!fish_ids || !Array.isArray(fish_ids)) {
+      throw new Error('fish_ids must be an array');
+    }
+
+    if (!owner) {
+      throw new Error('owner is required');
+    }
+
+    const txHash = await fishService.feedFishBatch(fish_ids, owner);
+
+    return createSuccessResponse(
+      { tx_hash: txHash },
+      'Fish fed successfully'
     );
   } catch (error) {
     return createErrorResponse(error);
