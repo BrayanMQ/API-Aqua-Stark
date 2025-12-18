@@ -48,3 +48,12 @@ export interface UpdateFishDto {
   species?: string;
   imageUrl?: string;
 }
+
+/**
+ * DTO for feeding multiple fish in a batch operation.
+ * Used in POST /fish/feed endpoint.
+ */
+export interface FeedFishBatchDto {
+  fish_ids: number[];
+  owner: string;
+}
