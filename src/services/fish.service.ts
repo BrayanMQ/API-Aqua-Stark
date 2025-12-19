@@ -214,9 +214,10 @@ export class FishService {
   /**
    * Feeds multiple fish in a batch operation.
    * 
-   * Validates ownership of all fish, then calls the on-chain feed_fish_batch
-   * function which handles XP updates, last_fed_at timestamps, and applies
-   * XP multipliers based on active tank decorations.
+   * Validates ownership of all fish, retrieves the tank for the owner to calculate
+   * decoration multipliers, then calls the on-chain feed_fish_batch function which
+   * handles XP updates, last_fed_at timestamps, and applies XP multipliers based
+   * on active tank decorations.
    * 
    * The backend does NOT update Supabase - all state changes happen on-chain.
    * Unity will query the updated state from the contract after receiving the tx_hash.
@@ -270,19 +271,43 @@ export class FishService {
 
     // Check if all requested fish were found
     if (fishList.length !== fishIds.length) {
-      const foundIds = fishList.map((f) => f.id);
-      const missingIds = fishIds.filter((id) => !foundIds.includes(id));
+      const foundIds = fishList.map((f: { id: number; owner: string }) => f.id);
+      const missingIds = fishIds.filter((id: number) => !foundIds.includes(id));
       throw new NotFoundError(`Fish with IDs [${missingIds.join(', ')}] not found`);
     }
 
     // Validate ownership - all fish must belong to the specified owner
-    const invalidOwnership = fishList.filter((fish) => fish.owner !== trimmedOwner);
+    const invalidOwnership = fishList.filter((fish: { id: number; owner: string }) => fish.owner !== trimmedOwner);
     if (invalidOwnership.length > 0) {
-      const invalidIds = invalidOwnership.map((f) => f.id);
+      const invalidIds = invalidOwnership.map((f: { id: number; owner: string }) => f.id);
       throw new ValidationError(
         `Fish with IDs [${invalidIds.join(', ')}] do not belong to owner ${trimmedOwner}`
       );
     }
+
+    // Get tank for the owner (all fish in batch belong to same owner)
+    // This is needed to calculate decoration multipliers
+    const { data: tankData, error: tankError } = await supabase
+      .from('tanks')
+      .select('id')
+      .eq('owner', trimmedOwner)
+      .single();
+
+    if (tankError) {
+      if (tankError.code === 'PGRST116') {
+        // Owner doesn't have a tank - this is acceptable, we'll use multiplier 0
+        // (no active decorations means no bonus XP)
+        logError(`Owner ${trimmedOwner} does not have a tank - will use multiplier 0`, tankError);
+      } else {
+        throw new Error(`Database error when retrieving tank: ${tankError.message}`);
+      }
+    }
+
+    // Extract tank_id if available, otherwise null (will result in multiplier 0)
+    // This will be used in the next steps to calculate decoration multipliers
+    const tankId: number | null = tankData?.id ?? null;
+
+    // TODO: Use tankId to calculate decoration multipliers in next step
 
     // Call on-chain feed_fish_batch function
     // This updates XP, last_fed_at, applies XP multipliers, and handles state changes
