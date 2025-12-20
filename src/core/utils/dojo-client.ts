@@ -350,21 +350,36 @@ export async function gainFishXp(fishId: number, amount: number): Promise<string
 
 /**
  * Breeds two fish to create offspring.
- * STUB: Returns mock transaction hash.
+ * STUB: Returns mock transaction hash and generated fish ID.
+ * 
+ * The contract creates a new Fish with:
+ * - id = fish_id (from global FishCounter)
+ * - owner = owner of parent fish
+ * - state = "Baby"
+ * - xp = 0
+ * - is_ready_to_breed = false
+ * - species and dna inherited from parents (logic in stub)
  * 
  * @param fish1Id - ID of first parent fish
  * @param fish2Id - ID of second parent fish
- * @returns Transaction hash
+ * @returns MintFishResult with tx_hash and fish_id
  */
-export async function breedFish(fish1Id: number, fish2Id: number): Promise<string> {
+export async function breedFish(fish1Id: number, fish2Id: number): Promise<MintFishResult> {
   logDebug(`[STUB] breedFish called - fish1: ${fish1Id}, fish2: ${fish2Id}`);
   
   // TODO: Replace with real Dojo contract call
   // const result = await contract.invoke('breed_fish', [fish1Id, fish2Id]);
   
-  const result = createMockTransactionResult();
-  logInfo(`Fish bred (stub): parents=${fish1Id},${fish2Id}, tx: ${result.tx_hash}`);
-  return result.tx_hash;
+  // Generate next fish ID (simulates on-chain counter)
+  const fishId = await getNextFishId();
+  const txHash = generateMockTxHash();
+  
+  logInfo(`Fish bred (stub): parents=${fish1Id},${fish2Id}, offspring_id=${fishId}, tx: ${txHash}`);
+  
+  return {
+    tx_hash: txHash,
+    fish_id: fishId,
+  };
 }
 
 /**
