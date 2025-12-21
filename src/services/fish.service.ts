@@ -12,7 +12,7 @@
 import { ValidationError, NotFoundError, OnChainError } from '@/core/errors';
 import { getSupabaseClient } from '@/core/utils/supabase-client';
 import { logError } from '@/core/utils/logger';
-import { getFishOnChain, feedFishBatch, breedFish as breedFishOnChain } from '@/core/utils/dojo-client';
+import { getFishOnChain, gainFishXp, gainPlayerXp, breedFish as breedFishOnChain } from '@/core/utils/dojo-client';
 import { getActiveDecorationsMultiplier, getFeedBaseXp, calculateFishXp } from '@/core/utils/xp-calculator';
 import type { Fish } from '@/models/fish.model';
 import { FishState } from '@/models/fish.model';
@@ -218,20 +218,20 @@ export class FishService {
    * 
    * Validates ownership of all fish, retrieves the tank for the owner to calculate
    * decoration multipliers, calculates final XP with multipliers applied, then calls
-   * the on-chain feed_fish_batch function which handles XP updates and last_fed_at timestamps.
+   * on-chain XP gain functions for each fish and the player.
    * 
    * The XP calculation process:
    * 1. Gets base XP from food type (default: 10 XP)
    * 2. Gets active decorations multiplier for the tank
    * 3. Calculates final XP = baseXp * (1 + multiplier/100)
-   * 4. Passes calculated XP values to on-chain function
-   * 
-   * The backend does NOT update Supabase - all state changes happen on-chain.
-   * Unity will query the updated state from the contract after receiving the tx_hash.
+   * 4. Calls gainFishXp() on-chain for each fish
+   * 5. Calls gainPlayerXp() on-chain with total XP gained
+   * 6. Updates player.total_xp in Supabase
+   * 7. Adds sync queue entries for all on-chain operations
    * 
    * @param fishIds - Array of fish IDs to feed
    * @param owner - Owner's Starknet wallet address (for ownership validation)
-   * @returns Transaction hash from the on-chain operation
+   * @returns Transaction hash from the player XP gain on-chain operation
    * @throws {ValidationError} If fishIds is empty, owner is invalid, or any fish doesn't exist or belong to owner
    * @throws {OnChainError} If the on-chain feed operation fails
    */
@@ -311,7 +311,6 @@ export class FishService {
     }
 
     // Extract tank_id if available, otherwise null (will result in multiplier 0)
-    // This will be used in the next steps to calculate decoration multipliers
     const tankId: number | null = tankData?.id ?? null;
 
     // Calculate decoration multiplier for the tank
@@ -330,32 +329,113 @@ export class FishService {
         multiplierPercentage = 0;
       }
     }
-    // If tankId is null, multiplierPercentage remains 0 (no active decorations)
-    // multiplierPercentage will be used in the next steps to calculate final XP
 
     // Get base XP for feeding (currently using default, but can be extended to support food types)
-    // TODO: In the future, this can accept a foodType parameter from the request
     const baseXp = getFeedBaseXp(); // Defaults to FoodType.Basic (10 XP)
 
     // Calculate final XP for each fish applying decoration multiplier
     // All fish in the batch belong to the same owner/tank, so they all get the same multiplier
     const finalXp = calculateFishXp(baseXp, multiplierPercentage);
 
-    // Calculate XP values for all fish (same value for all since they share the same tank)
-    const fishXpValues = fishIds.map(() => finalXp);
+    // Calculate total XP gained by the player (sum of all fish XP)
+    const totalXpGained = finalXp * fishIds.length;
 
-    // Call on-chain feed_fish_batch function
-    // This updates XP, last_fed_at, applies XP multipliers, and handles state changes
-    // Pass calculated XP values so the on-chain function can update XP with multipliers applied
+    // Array to store all transaction hashes for sync queue
+    const fishXpTxHashes: { fishId: number; txHash: string }[] = [];
+
+    // Call gainFishXp on-chain for each fish
     try {
-      const txHash = await feedFishBatch(fishIds, fishXpValues);
-      return txHash;
+      for (const fishId of fishIds) {
+        const txHash = await gainFishXp(fishId, finalXp);
+        fishXpTxHashes.push({ fishId, txHash });
+      }
     } catch (error) {
-      logError(`Failed to feed fish batch on-chain: [${fishIds.join(', ')}]`, error);
+      logError(`Failed to grant XP to fish on-chain: [${fishIds.join(', ')}]`, error);
       throw new OnChainError(
-        `Failed to feed fish batch: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to grant fish XP on-chain: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+
+    // Call gainPlayerXp on-chain with total XP gained
+    let playerXpTxHash: string;
+    try {
+      playerXpTxHash = await gainPlayerXp(trimmedOwner, totalXpGained);
+    } catch (error) {
+      logError(`Failed to grant player XP on-chain: ${trimmedOwner}`, error);
+      throw new OnChainError(
+        `Failed to grant player XP on-chain: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    // Update player.total_xp in Supabase
+    // First, get current total_xp value
+    const { data: playerData, error: playerFetchError } = await supabase
+      .from('players')
+      .select('total_xp')
+      .eq('address', trimmedOwner)
+      .single();
+
+    if (playerFetchError) {
+      if (playerFetchError.code === 'PGRST116') {
+        throw new NotFoundError(`Player with address ${trimmedOwner} not found`);
+      }
+      logError('Failed to fetch player data for XP update', { error: playerFetchError, address: trimmedOwner });
+      throw new Error(`Failed to fetch player data: ${playerFetchError.message}`);
+    }
+
+    if (!playerData) {
+      throw new NotFoundError(`Player with address ${trimmedOwner} not found`);
+    }
+
+    // Update player total_xp with the gained XP
+    const currentTotalXp = playerData.total_xp || 0;
+    const newTotalXp = currentTotalXp + totalXpGained;
+
+    const { error: updateError } = await supabase
+      .from('players')
+      .update({ total_xp: newTotalXp })
+      .eq('address', trimmedOwner);
+
+    if (updateError) {
+      logError('Failed to update player total_xp in Supabase', { error: updateError, address: trimmedOwner });
+      throw new Error(`Failed to update player total_xp: ${updateError.message}`);
+    }
+
+    // Add sync queue entries for all on-chain XP operations
+    // Entry for each fish XP gain
+    for (const { fishId, txHash } of fishXpTxHashes) {
+      const { error: syncError } = await supabase
+        .from('sync_queue')
+        .insert({
+          tx_hash: txHash,
+          entity_type: 'fish',
+          entity_id: fishId.toString(),
+          status: 'pending',
+        });
+
+      if (syncError) {
+        // Log error but don't fail the operation - sync queue is for tracking
+        logError(`Failed to add fish XP sync queue entry for fish ${fishId}`, { error: syncError, tx_hash: txHash });
+      }
+    }
+
+    // Entry for player XP gain
+    const { error: playerSyncError } = await supabase
+      .from('sync_queue')
+      .insert({
+        tx_hash: playerXpTxHash,
+        entity_type: 'player',
+        entity_id: trimmedOwner,
+        status: 'pending',
+      });
+
+    if (playerSyncError) {
+      // Log error but don't fail the operation - sync queue is for tracking
+      logError(`Failed to add player XP sync queue entry for ${trimmedOwner}`, { error: playerSyncError, tx_hash: playerXpTxHash });
+    }
+
+    // Return the player XP transaction hash as the main result
+    return playerXpTxHash;
   }
 
   // ============================================================================
