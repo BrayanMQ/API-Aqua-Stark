@@ -52,6 +52,7 @@ export async function displayServerBanner(): Promise<void> {
    • GET  /api/player/:address/fish      Get all fish owned by a player
    • POST /api/fish/feed                 Feed multiple fish in batch
    • POST /api/fish/breed                Breed two fish together
+   • POST /api/asset/fish/:id/sprite     Upload fish sprite/3D asset
    
    Tanks:
    • GET  /api/tank/:id                  Get tank details by ID
