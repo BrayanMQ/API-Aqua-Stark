@@ -2,7 +2,13 @@
  * @fileoverview Fish Service
  * 
  * Handles business logic for fish operations including retrieval,
- * and synchronization between Supabase and on-chain data.
+ * feeding, breeding, and synchronization between Supabase and on-chain data.
+ * 
+ * Tank Capacity Rules:
+ * - Each fish is assigned to a tank via tank_id
+ * - Before breeding, the owner's tank capacity is validated
+ * - New fish are automatically assigned to the owner's first tank
+ * - If tank is at capacity, ConflictError is thrown
  */
 
 // ============================================================================
@@ -10,6 +16,7 @@
 // ============================================================================
 
 import { ValidationError, NotFoundError, OnChainError } from '@/core/errors';
+import { TankService } from '@/services/tank.service';
 import { getSupabaseClient } from '@/core/utils/supabase-client';
 import { logError } from '@/core/utils/logger';
 import { getFishOnChain, feedFishBatch, breedFish as breedFishOnChain } from '@/core/utils/dojo-client';
@@ -210,6 +217,41 @@ export class FishService {
   }
 
   // ============================================================================
+  // TANK CAPACITY
+  // ============================================================================
+
+  /**
+   * Gets the count of fish in a specific tank.
+   * 
+   * Queries Supabase for fish with the specified tank_id.
+   * Used for tank capacity validation before adding new fish.
+   * 
+   * @param tankId - Tank ID to count fish for
+   * @returns Number of fish in the tank
+   * @throws {ValidationError} If tankId is invalid
+   */
+  async getFishCountInTank(tankId: number): Promise<number> {
+    // Validate tankId
+    if (!tankId || tankId <= 0 || !Number.isInteger(tankId)) {
+      throw new ValidationError('Invalid tank ID');
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Count fish with matching tank_id
+    const { count, error } = await supabase
+      .from('fish')
+      .select('id', { count: 'exact', head: true })
+      .eq('tank_id', tankId);
+
+    if (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    return count ?? 0;
+  }
+
+  // ============================================================================
   // FISH FEEDING
   // ============================================================================
 
@@ -370,16 +412,18 @@ export class FishService {
    * - Both fish must be adults (state === Adult)
    * - Both fish must be ready to breed (isReadyToBreed === true)
    * - fish1_id must be different from fish2_id
+   * - Owner's tank must have capacity for the new fish
    * 
    * Creates a new fish on-chain, saves it to Supabase with parent references,
-   * and updates player statistics (offspring_created and fish_count).
+   * assigns the fish to the owner's tank, and updates player statistics.
    * 
    * @param fish1Id - ID of first parent fish
    * @param fish2Id - ID of second parent fish
    * @param owner - Owner's Starknet wallet address (for ownership validation)
    * @returns Complete Fish data of the newly created offspring
    * @throws {ValidationError} If IDs are invalid, same, or breeding conditions not met
-   * @throws {NotFoundError} If fish don't exist
+   * @throws {NotFoundError} If fish don't exist or owner has no tank
+   * @throws {ConflictError} If tank is at capacity
    * @throws {OnChainError} If the on-chain breeding operation fails
    */
   async breedFish(fish1Id: number, fish2Id: number, owner: string): Promise<Fish> {
@@ -460,6 +504,17 @@ export class FishService {
       throw new ValidationError(`Fish with ID ${fish2Id} is not ready to breed`);
     }
 
+    // Get owner's tank and validate capacity
+    const tankService = new TankService();
+    const tankId = await tankService.getFirstTankIdByOwner(trimmedOwner);
+
+    if (tankId === null) {
+      throw new NotFoundError(`Owner ${trimmedOwner} has no tank. Cannot breed fish without a tank.`);
+    }
+
+    // Validate tank has capacity for the new fish (1 fish will be added)
+    await tankService.checkTankCapacity(tankId, 1);
+
     // Call on-chain breed_fish function
     let breedResult;
     try {
@@ -483,7 +538,7 @@ export class FishService {
     // In the future, this could be based on species mapping or on-chain genetics
     const imageUrl = fish1.imageUrl;
 
-    // Insert new fish into Supabase with parent references
+    // Insert new fish into Supabase with parent references and tank assignment
     const { error: insertError } = await supabase
       .from('fish')
       .insert({
@@ -493,6 +548,7 @@ export class FishService {
         image_url: imageUrl,
         parent1_id: fish1Id,
         parent2_id: fish2Id,
+        tank_id: tankId,
       })
       .select()
       .single();
