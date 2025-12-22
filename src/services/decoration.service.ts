@@ -12,7 +12,7 @@
 import { ValidationError, NotFoundError, OnChainError, ConflictError } from '@/core/errors';
 import { getSupabaseClient } from '@/core/utils/supabase-client';
 import { logError } from '@/core/utils/logger';
-import { getDecorationOnChain, activateDecoration as activateDecorationOnChain } from '@/core/utils/dojo-client';
+import { getDecorationOnChain, activateDecoration as activateDecorationOnChain, deactivateDecoration as deactivateDecorationOnChain } from '@/core/utils/dojo-client';
 import type { Decoration, DecorationKind } from '@/models/decoration.model';
 
 // ============================================================================
@@ -270,6 +270,88 @@ export class DecorationService {
     const { error: updateError } = await supabase
       .from('decorations')
       .update({ is_active: true })
+      .eq('id', id);
+
+    if (updateError) {
+      logError(`Failed to update decoration ${id} in Supabase`, updateError);
+      throw new Error(`Database error: ${updateError.message}`);
+    }
+
+    // Return updated decoration
+    return await this.getDecorationById(id);
+  }
+
+  // ============================================================================
+  // DECORATION DEACTIVATION
+  // ============================================================================
+
+  /**
+   * Deactivates a decoration, removing its XP multiplier from fish XP gains
+   * in the associated tank.
+   * 
+   * Flow:
+   * 1. Validate decoration ID and owner address
+   * 2. Get decoration to validate existence and ownership
+   * 3. Validate decoration is currently active
+   * 4. Call deactivateDecoration() on-chain
+   * 5. Update is_active to false in Supabase
+   * 6. Return updated decoration
+   * 
+   * @param id - Decoration ID
+   * @param owner - Owner's Starknet wallet address
+   * @returns Updated Decoration with is_active = false
+   * @throws {ValidationError} If ID or address is invalid, or ownership doesn't match
+   * @throws {NotFoundError} If decoration doesn't exist
+   * @throws {ConflictError} If decoration is already inactive
+   * @throws {OnChainError} If on-chain deactivation fails
+   */
+  async deactivateDecoration(id: number, owner: string): Promise<Decoration> {
+    // Validate ID
+    if (!id || id <= 0 || !Number.isInteger(id)) {
+      throw new ValidationError('Invalid decoration ID');
+    }
+
+    // Validate address
+    if (!owner || owner.trim().length === 0) {
+      throw new ValidationError('Owner address is required');
+    }
+
+    // Basic Starknet address format validation (starts with 0x and is hex)
+    const addressPattern = /^0x[a-fA-F0-9]{63,64}$/;
+    if (!addressPattern.test(owner.trim())) {
+      throw new ValidationError('Invalid Starknet address format');
+    }
+
+    const trimmedOwner = owner.trim();
+
+    // Get decoration to validate existence and get current state
+    const decoration = await this.getDecorationById(id);
+
+    // Validate ownership
+    if (decoration.owner !== trimmedOwner) {
+      throw new ValidationError(`Decoration with ID ${id} does not belong to owner ${trimmedOwner}`);
+    }
+
+    // Validate decoration is currently active
+    if (!decoration.is_active) {
+      throw new ConflictError(`Decoration with ID ${id} is already inactive`);
+    }
+
+    // Call on-chain deactivateDecoration function
+    try {
+      await deactivateDecorationOnChain(id);
+    } catch (error) {
+      logError(`Failed to deactivate decoration ${id} on-chain`, error);
+      throw new OnChainError(
+        `Failed to deactivate decoration ${id} on-chain: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    // Update is_active to false in Supabase
+    const supabase = getSupabaseClient();
+    const { error: updateError } = await supabase
+      .from('decorations')
+      .update({ is_active: false })
       .eq('id', id);
 
     if (updateError) {
