@@ -7,6 +7,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { ControllerResponse } from '@/core/types/controller-response';
 import { createSuccessResponse, createErrorResponse } from '@/core/responses';
+import { ValidationError } from '@/core/errors';
 import { FishService } from '@/services/fish.service';
 import type { Fish, FeedFishBatchDto, BreedFishDto } from '@/models/fish.model';
 import type { FishFamilyTree } from '@/core/types/dojo-types';
@@ -66,7 +67,7 @@ export async function getFishFamily(
     
     // Basic validation before service call (service does stricter validation)
     if (isNaN(fishId)) {
-      throw new Error('Invalid fish ID format');
+      throw new ValidationError('Invalid fish ID format');
     }
 
     const familyTree = await fishService.getFishFamily(fishId);
