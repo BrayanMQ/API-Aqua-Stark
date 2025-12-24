@@ -5,7 +5,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { getHealth } from '@/controllers/health.controller';
+import { getHealth, getStatus } from '@/controllers/health.controller';
 
 /**
  * Registers health routes with the Fastify instance.
@@ -14,5 +14,6 @@ import { getHealth } from '@/controllers/health.controller';
  */
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
   app.get('/health', getHealth);
+  app.get('/status', getStatus);
 }
 
