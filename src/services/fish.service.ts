@@ -93,6 +93,7 @@ export class FishService {
         owner: fishOffChain.owner,
         species: fishOffChain.species,
         imageUrl: fishOffChain.image_url, // Map snake_case to camelCase
+        spriteUrl: fishOffChain.sprite_url ?? null, // Map sprite_url from database
         createdAt: new Date(fishOffChain.created_at), // Convert string to Date
       };
 
@@ -176,6 +177,7 @@ export class FishService {
       owner: string;
       species: string;
       image_url: string;
+      sprite_url: string | null;
       created_at: string;
     };
 
@@ -202,6 +204,7 @@ export class FishService {
           owner: fishOffChain.owner,
           species: fishOffChain.species,
           imageUrl: fishOffChain.image_url, // Map snake_case to camelCase
+          spriteUrl: fishOffChain.sprite_url ?? null, // Map sprite_url from database
           createdAt: new Date(fishOffChain.created_at), // Convert string to Date
         };
       });
