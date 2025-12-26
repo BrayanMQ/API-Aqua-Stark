@@ -81,6 +81,7 @@ export class DecorationService {
         // Off-chain data
         is_active: decorationOffChain.is_active,
         imageUrl: decorationOffChain.image_url, 
+        sprite_url: decorationOffChain.image_url ?? null, // Map image_url to sprite_url
         createdAt: new Date(decorationOffChain.created_at), 
       };
 
@@ -185,6 +186,7 @@ export class DecorationService {
           // Off-chain data
           is_active: decorationOffChain.is_active,
           imageUrl: decorationOffChain.image_url, 
+          sprite_url: decorationOffChain.image_url ?? null, // Map image_url to sprite_url
           createdAt: new Date(decorationOffChain.created_at), 
         };
       });

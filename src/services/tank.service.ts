@@ -250,6 +250,7 @@ export class TankService {
       // Off-chain data
       owner: tankOffChain.owner,
       name: tankOffChain.name,
+      sprite_url: tankOffChain.sprite_url ?? null, // Map sprite_url from database
       createdAt: new Date(tankOffChain.created_at),
 
       // Relations
@@ -345,6 +346,7 @@ export class TankService {
       id: number;
       owner: string;
       name: string | null;
+      sprite_url: string | null;
       created_at: string;
     };
 
@@ -374,6 +376,7 @@ export class TankService {
           // Off-chain data
           owner: tankOffChain.owner,
           name: tankOffChain.name,
+          sprite_url: tankOffChain.sprite_url ?? null, // Map sprite_url from database
           createdAt: new Date(tankOffChain.created_at),
 
           // Calculated fields

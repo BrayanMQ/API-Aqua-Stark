@@ -19,7 +19,7 @@ export interface PlayerOnChain {
 // Off-chain fields (from Supabase)
 export interface PlayerOffChain {
   address: string;
-  avatar_url?: string;
+  avatar_url?: string | null; // Always included in responses, null if not set
   created_at: Date;
   updated_at: Date;
 }

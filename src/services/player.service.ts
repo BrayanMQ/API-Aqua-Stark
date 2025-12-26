@@ -524,7 +524,7 @@ export class PlayerService {
       tournaments_won: supabasePlayer.tournaments_won ?? 0,
       reputation: supabasePlayer.reputation ?? 0,
       offspring_created: supabasePlayer.offspring_created ?? 0,
-      avatar_url: supabasePlayer.avatar_url ?? undefined,
+      avatar_url: supabasePlayer.avatar_url ?? null, // Always include avatar_url, null if not set
       created_at: new Date(supabasePlayer.created_at),
       updated_at: new Date(supabasePlayer.updated_at),
     };

@@ -29,6 +29,7 @@ export interface DecorationOffChain {
   kind: DecorationKind;
   is_active: boolean;
   imageUrl?: string;
+  sprite_url?: string | null; // URL to sprite/asset for the decoration, always included (null if not set)
   createdAt: Date;
 }
 
