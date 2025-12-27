@@ -63,7 +63,6 @@ export async function displayServerBanner(): Promise<void> {
    Tanks:
    • GET  /api/tank/:id                  Get tank details by ID
    • GET  /api/player/:address/tanks     Get all tanks owned by a player
-   • GET  /api/player/:address/tanks     Get all tanks owned by a player
    
    Decorations:
    • GET  /api/decoration/:id            Get decoration details by ID
